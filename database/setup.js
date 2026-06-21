@@ -1,10 +1,30 @@
 require("dotenv").config();
+const dns = require("dns");
 const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
+function parseDatabaseUrl(connectionString) {
+  const url = new URL(connectionString);
+  return {
+    host: url.hostname,
+    port: url.port || 5432,
+    database: url.pathname.slice(1),
+    user: url.username,
+    password: url.password,
+  };
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ...parseDatabaseUrl(process.env.DATABASE_URL),
+  ssl: { rejectUnauthorized: false },
+  keepAlive: true,
+  family: 4,
+  connectionTimeoutMillis: 20000,
+  idleTimeoutMillis: 30000,
 });
 
 async function setupDatabase() {
@@ -65,6 +85,79 @@ async function setupDatabase() {
       );
     `);
     console.log("Token transactions table created");
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS pharmacy_screenings (
+        id SERIAL PRIMARY KEY,
+        player_id INTEGER REFERENCES players(id) ON DELETE CASCADE,
+        partner_id INTEGER REFERENCES partners(id) ON DELETE SET NULL,
+        height_cm DECIMAL(5,1) NOT NULL,
+        weight_kg DECIMAL(5,1) NOT NULL,
+        systolic INTEGER NOT NULL,
+        diastolic INTEGER NOT NULL,
+        resting_heart_rate INTEGER NOT NULL,
+        body_composition DECIMAL(5,2),
+        pain_level VARCHAR(20) NOT NULL,
+        dizziness BOOLEAN NOT NULL,
+        previous_injury VARCHAR(50) NOT NULL,
+        currently_injured BOOLEAN NOT NULL,
+        on_medication BOOLEAN NOT NULL,
+        bmi DECIMAL(5,2),
+        bmi_category VARCHAR(20),
+        bp_category VARCHAR(20),
+        hr_category VARCHAR(20),
+        risk_level VARCHAR(20),
+        recommendation VARCHAR(100),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log("Pharmacy screenings table created");
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS coach_assessments (
+        id SERIAL PRIMARY KEY,
+        player_id INTEGER REFERENCES players(id) ON DELETE CASCADE,
+        assessor_id INTEGER REFERENCES assessors(id) ON DELETE SET NULL,
+        session_type VARCHAR(30) NOT NULL,
+        session_date DATE NOT NULL,
+        opponent VARCHAR(150),
+        first_touch INTEGER,
+        weak_foot INTEGER,
+        passing INTEGER,
+        dribbling INTEGER,
+        scanning INTEGER,
+        positioning INTEGER,
+        decision_making INTEGER,
+        top_speed DECIMAL(6,2),
+        distance_covered DECIMAL(6,2),
+        high_intensity_sprints INTEGER,
+        pressing INTEGER,
+        recovery_runs INTEGER,
+        aggression INTEGER,
+        leadership INTEGER,
+        reaction_to_mistakes INTEGER,
+        composure INTEGER,
+        timing_of_runs INTEGER,
+        creating_space INTEGER,
+        body_orientation INTEGER,
+        tackling INTEGER,
+        interceptions INTEGER,
+        aerial_duels INTEGER,
+        shots_on_target INTEGER,
+        xg_created DECIMAL(6,2),
+        crossing INTEGER,
+        learning_speed INTEGER,
+        response_to_instructions INTEGER,
+        attitude INTEGER,
+        average_rating DECIMAL(4,2),
+        top_strengths TEXT,
+        bottom_weaknesses TEXT,
+        coach_notes TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log("Coach assessments table created");
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS assessors (

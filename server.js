@@ -18,8 +18,9 @@ app.use(cors({
   origin: [
     process.env.FRONTEND_URL,
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
     "http://localhost:3000",  // fallback for CRA
-
+    "http://127.0.0.1:3000",
   ].filter(Boolean),
   credentials: true,
 }));
@@ -49,6 +50,8 @@ app.use("/api/auth",    require("./routes/auth"));
 app.use("/api/players", require("./routes/players"));
 app.use("/api/admin",   require("./routes/admin"));
 app.use("/api/public",  require("./routes/public"));
+app.use("/api/pharmacy", require("./routes/pharmacy"));
+app.use("/api/coach", require("./routes/coachAssessment"));
 
 // ============================================================
 // HEALTH CHECK
