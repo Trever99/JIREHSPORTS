@@ -232,11 +232,12 @@ async function setupDatabase() {
 
     const assessorHash = await bcrypt.hash("assessor123", 12);
     const demoAssessorHash = await bcrypt.hash(process.env.DEMO_ASSESSOR_PASSWORD || "1234", 12);
+    const coachAssessmentDemoHash = await bcrypt.hash(process.env.COACH_ASSESSMENT_DEMO_PASSWORD || "1234", 12);
     await client.query(`
       INSERT INTO assessors (name, email, password_hash)
-      VALUES ('Coach Jireh', 'coach@jireh.com', $1), ('Demo Assessor', 'demo@jireh.com', $2)
+      VALUES ('Coach Jireh', 'coach@jireh.com', $1), ('Demo Assessor', 'demo@jireh.com', $2), ('Coach Assessment Demo', 'coachassessmentdemo@jireh.com', $3)
       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, name = EXCLUDED.name, is_active = true;
-    `, [assessorHash, demoAssessorHash]);
+    `, [assessorHash, demoAssessorHash, coachAssessmentDemoHash]);
     console.log("Sample assessor seeded");
 
     await client.query(`

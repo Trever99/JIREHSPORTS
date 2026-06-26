@@ -91,11 +91,38 @@ async function ensureDefaultAssessorAccount() {
   return created.rows[0];
 }
 
+async function ensureCoachAssessmentDemoAccount() {
+  const email = process.env.COACH_ASSESSMENT_DEMO_EMAIL || "coachassessmentdemo@jireh.com";
+  const name = process.env.COACH_ASSESSMENT_DEMO_NAME || "Coach Assessment Demo";
+  const passwordHash = await bcrypt.hash(process.env.COACH_ASSESSMENT_DEMO_PASSWORD || "1234", 12);
+
+  const existing = await pool.query(
+    "SELECT id, email, password_hash FROM assessors WHERE email = $1",
+    [email]
+  );
+
+  if (existing.rows.length > 0) {
+    await pool.query(
+      "UPDATE assessors SET password_hash = $1, name = $2, is_active = true WHERE email = $3",
+      [passwordHash, name, email]
+    );
+    return { email, password_hash: passwordHash };
+  }
+
+  const created = await pool.query(
+    "INSERT INTO assessors (name, email, password_hash, is_active) VALUES ($1, $2, $3, true) RETURNING id, name, email, password_hash",
+    [name, email, passwordHash]
+  );
+
+  return created.rows[0];
+}
+
 async function ensureDefaultAccounts() {
   try {
     await ensureDefaultAdminAccount();
     await ensureDefaultPartnerAccount();
     await ensureDefaultAssessorAccount();
+    await ensureCoachAssessmentDemoAccount();
   } catch (err) {
     console.error("❌ Failed to ensure default demo accounts:", err);
   }
@@ -181,8 +208,13 @@ router.post("/assessor/login", async (req, res) => {
 
   try {
     let result = await pool.query("SELECT * FROM assessors WHERE email = $1 AND is_active = true", [email]);
-    if (result.rows.length === 0 && (email === "demo@jireh.com" || email === "demo")) {
+    if (result.rows.length === 0 && [
+      process.env.DEMO_ASSESSOR_EMAIL || "demo@jireh.com",
+      process.env.COACH_ASSESSMENT_DEMO_EMAIL || "coachassessmentdemo@jireh.com",
+      "demo"
+    ].includes(email)) {
       await ensureDefaultAssessorAccount();
+      await ensureCoachAssessmentDemoAccount();
       result = await pool.query("SELECT * FROM assessors WHERE email = $1 AND is_active = true", [email]);
     }
     if (result.rows.length === 0) return res.status(401).json({ error: "Invalid credentials." });
