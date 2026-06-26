@@ -207,33 +207,36 @@ async function setupDatabase() {
     `);
     console.log("Admins table created");
 
-    const adminUsername = process.env.ADMIN_USERNAME || "admin";
-    const adminPassword = process.env.ADMIN_PASSWORD || "jireh2024";
+    const adminUsername = process.env.ADMIN_USERNAME || "Demo";
+    const adminPassword = process.env.ADMIN_PASSWORD || "1234";
     const adminHash = await bcrypt.hash(adminPassword, 12);
     await client.query(`
       INSERT INTO admins (username, password_hash)
       VALUES ($1, $2)
-      ON CONFLICT (username) DO NOTHING;
+      ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash;
     `, [adminUsername, adminHash]);
     console.log("Admin account seeded");
 
     const partnerHash = await bcrypt.hash("pharmacy123", 12);
+    const demoPartnerHash = await bcrypt.hash(process.env.DEMO_PARTNER_PASSWORD || "1234", 12);
     await client.query(`
       INSERT INTO partners (clinic_name, email, password_hash, token_balance)
       VALUES
         ('Avenues Pharmacy', 'avenues@partner.jireh.com', $1, 8),
         ('CityMed Clinic', 'citymed@partner.jireh.com', $1, 3),
-        ('BulaCare Health', 'bulacare@partner.jireh.com', $1, 0)
-      ON CONFLICT (email) DO NOTHING;
-    `, [partnerHash]);
+        ('BulaCare Health', 'bulacare@partner.jireh.com', $1, 0),
+        ('Demo Partner', 'demo@partner.jireh.com', $2, 0)
+      ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, clinic_name = EXCLUDED.clinic_name, is_active = true;
+    `, [partnerHash, demoPartnerHash]);
     console.log("Sample pharmacies seeded");
 
     const assessorHash = await bcrypt.hash("assessor123", 12);
+    const demoAssessorHash = await bcrypt.hash(process.env.DEMO_ASSESSOR_PASSWORD || "1234", 12);
     await client.query(`
       INSERT INTO assessors (name, email, password_hash)
-      VALUES ('Coach Jireh', 'coach@jireh.com', $1)
-      ON CONFLICT (email) DO NOTHING;
-    `, [assessorHash]);
+      VALUES ('Coach Jireh', 'coach@jireh.com', $1), ('Demo Assessor', 'demo@jireh.com', $2)
+      ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, name = EXCLUDED.name, is_active = true;
+    `, [assessorHash, demoAssessorHash]);
     console.log("Sample assessor seeded");
 
     await client.query(`
