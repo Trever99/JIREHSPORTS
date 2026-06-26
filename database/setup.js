@@ -207,12 +207,14 @@ async function setupDatabase() {
     `);
     console.log("Admins table created");
 
-    const adminHash = await bcrypt.hash("jireh2024", 12);
+    const adminUsername = process.env.ADMIN_USERNAME || "admin";
+    const adminPassword = process.env.ADMIN_PASSWORD || "jireh2024";
+    const adminHash = await bcrypt.hash(adminPassword, 12);
     await client.query(`
       INSERT INTO admins (username, password_hash)
-      VALUES ('admin', $1)
+      VALUES ($1, $2)
       ON CONFLICT (username) DO NOTHING;
-    `, [adminHash]);
+    `, [adminUsername, adminHash]);
     console.log("Admin account seeded");
 
     const partnerHash = await bcrypt.hash("pharmacy123", 12);
