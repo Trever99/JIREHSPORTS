@@ -8,39 +8,32 @@ if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder("ipv4first");
 }
 
-function parseDatabaseUrl(connectionString) {
-  const url = new URL(connectionString);
+function buildPoolConfig() {
+  if (process.env.DATABASE_URL) {
+    return {
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+      keepAlive: true,
+      family: 4,
+      connectionTimeoutMillis: 20000,
+      idleTimeoutMillis: 30000,
+    };
+  }
+
   return {
-    host: url.hostname,
-    port: url.port || 5432,
-    database: url.pathname.slice(1),
-    user: url.username,
-    password: url.password,
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+    family: 4,
+    connectionTimeoutMillis: 20000,
+    idleTimeoutMillis: 30000,
   };
 }
 
-const pool = new Pool(
-  process.env.DATABASE_URL
-    ? {
-        ...parseDatabaseUrl(process.env.DATABASE_URL),
-        ssl: { rejectUnauthorized: false },
-        keepAlive: true,
-        family: 4,
-        connectionTimeoutMillis: 20000,
-        idleTimeoutMillis: 30000,
-      }
-    : {
-        host: process.env.DB_HOST,
-        port: process.env.DB_PORT,
-        database: process.env.DB_NAME,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-        family: 4,
-        connectionTimeoutMillis: 20000,
-        idleTimeoutMillis: 30000,
-      }
-);
+const pool = new Pool(buildPoolConfig());
 
 pool.on("connect", () => {
   if (process.env.NODE_ENV !== "production") {
